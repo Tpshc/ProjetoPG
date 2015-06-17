@@ -16,8 +16,14 @@ void drawGrid();
 void selectNext();
 void selectLast();
 void translateModel(int selector, double deslocamento);
+bool leftScreen = true;
+bool divided_view_port = true;
 Camera cameraPrincipal = Camera();
+Camera cameraDiretor = Camera();
+Model cameraObj = Model("Resources/camera.obj");
 vector<Model> objs;
+bool keyboard[256];
+bool holdKey = false;
 int modelIndex = 0;
 double tempRotate_y = 0;
 double tempRotate_x = 0;
@@ -28,11 +34,12 @@ int lightIndex = 0;
 bool lightSelected = 0;
 double mousepos_x = 0;
 double mousepos_y = 0;
-bool click = false;
+bool clickPrincipal = false;
+bool clickDiretor = false;
 bool mouse_right = false;
-GLfloat wWidth = 1366.0;
+GLfloat wWidth = 1024.0;
 GLfloat wHeight = 768.0;
-
+float zNear = 0.1f;
 void idle(void);
 int frameCount = 0;
 float fps = 0;
@@ -45,33 +52,59 @@ GLvoid *font_style = GLUT_BITMAP_TIMES_ROMAN_24;
 
 // -------------Global Vars End ------------
 
-void display(){
-
-	//  Clear screen and Z-buffer
-
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	//--------------------------Camera Setup --------------------------------
-	glMatrixMode(GL_PROJECTION);
-	glViewport(0, 0, wWidth / 2, wHeight);
-	glLoadIdentity();
-	gluPerspective(45, wWidth / (wHeight * 2), 0.1f, 3000.0f);
-	cameraPrincipal.setView();
-	//-----------------------------------------------------------------------
-	
+void draw(){
 	DisplayLights();
-	for (size_t i = 0; i < objs.size(); i++)
-	{
+	for (size_t i = 0; i < objs.size(); i++){
 		objs[i].DrawModel();
 	}
 	//drawGrid();
 	drawFPS();
+}
+void display(){
 
+	//  Clear screen and Z-buffer
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//--------------------------Camera Setup --------------------------------
+	// normal mode
+	
+	if (!divided_view_port){
+		
+		glViewport(0, 0, wWidth, wHeight);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		gluPerspective(45, wWidth / (wHeight), zNear, 3000.0f);
+		cameraPrincipal.setView();
+		draw();
+	}
+	else{
+
+		//left
+		glMatrixMode(GL_PROJECTION);
+		glViewport(0, 0, wWidth / 2, wHeight);
+		glLoadIdentity();
+		gluPerspective(45, wWidth / (wHeight * 2), zNear, 3000.0f);
+		cameraPrincipal.setView();
+		draw();
+
+		//right
+		glMatrixMode(GL_PROJECTION);
+		glViewport(wWidth / 2, 0, wWidth, wHeight);
+		glLoadIdentity();
+		gluPerspective(45, (wWidth) / (wHeight), 0.1f, 3000.0f);
+		cameraDiretor.setView();
+		draw();
+		
+		
+	}
+	
+	//-----------------------------------------------------------------------
 	glFlush();
 	glutSwapBuffers();
 	glutPostRedisplay();
-}
 
+
+}
 void drawFPS()
 {
 	//  Load the identity matrix so that FPS string being drawn
@@ -181,8 +214,61 @@ void idle(void)
 {
 	//  Calculate FPS
 	calculateFPS();
-
-	//  Call display function (draw the current frame)
+	// botoes
+	if (!lightSelected){
+		if (keyboard['+'] || keyboard['='])
+			objs[modelIndex].scale += 0.01;
+		if (keyboard['-'] || keyboard['_'])
+			objs[modelIndex].scale -= 0.01;
+		if (keyboard['7'])
+			objs[modelIndex].rotate_x += 5;
+		if (keyboard['8'])
+			objs[modelIndex].rotate_y += 5;
+		if (keyboard['9'])
+			objs[modelIndex].rotate_z += 5;
+	}
+	if (keyboard['1'])
+		translateModel(0, -translateQtd);
+	if (keyboard['2'])
+		translateModel(0, +translateQtd);
+	if (keyboard['3'])
+		translateModel(1, -translateQtd);
+	if (keyboard['4'])
+		translateModel(1, +translateQtd);
+	if (keyboard['5'])
+		translateModel(2, -translateQtd);
+	if (keyboard['6'])
+		translateModel(2, +translateQtd);
+	if (keyboard[27])// ESC
+		exit(0);
+	if (keyboard['w'] || keyboard['W'])
+		cameraPrincipal.translateGlob(0, 0, 0.01);
+	if (keyboard['s'] || keyboard['S'])
+		cameraPrincipal.translateGlob(0, 0, -0.01);
+	if (keyboard['a'] || keyboard['A'])
+		cameraPrincipal.translateGlob(-0.01, 0, 0);
+	if (keyboard['d'] || keyboard['D'])
+		cameraPrincipal.translateGlob(0.01, 0, 0);
+	if (keyboard[','] || keyboard['<'])
+		selectLast();
+	if (keyboard['.'] || keyboard['>'])
+		selectNext();
+	if (keyboard['i'] || keyboard['I'])
+		cameraDiretor.translateGlob(0, 0, 0.01);
+	if (keyboard['k'] || keyboard['K'])
+		cameraDiretor.translateGlob(0, 0, -0.01);
+	if (keyboard['j'] || keyboard['J'])
+		cameraDiretor.translateGlob(-0.01, 0, 0);
+	if (keyboard['l'] || keyboard['L'])
+		cameraDiretor.translateGlob(0.01, 0, 0);
+	if (keyboard['r'] || keyboard['R']){
+		cameraPrincipal.translateLoc(0, 0, -0.009f);
+		zNear += 0.009f;
+	}	
+	if (keyboard['f'] || keyboard['F']){
+		cameraPrincipal.translateLoc(0, 0, 0.009f);
+		zNear -= 0.009f;
+	}
 	glutPostRedisplay();
 }
 
@@ -207,102 +293,14 @@ void drawGrid() // Draws a grid...
 
 	glPopMatrix();
 }
+void handleKeyUp(unsigned char key, int x, int y){
+	if (key != 'c')
+		keyboard[key] = false;
+}
 
-void handleKeypress(unsigned char key, int x, int y)
-{
-	switch (key){
-		//translateQtd
-	case 43://+
-		if (!lightSelected)
-			objs[modelIndex].scale += 0.01;
-		break;
-	case 61://=
-		if (!lightSelected)
-			objs[modelIndex].scale += 0.01;
-		break;
-	case 45://-
-		if (!lightSelected)
-			objs[modelIndex].scale -= 0.01;
-		break;
-	case 95://_
-		if (!lightSelected)
-			objs[modelIndex].scale -= 0.01;
-		break;
-	case 49://1
-		translateModel(0, -translateQtd);
-		break;
-
-	case 50://2
-		translateModel(0, +translateQtd);
-		break;
-
-	case 51://3
-		translateModel(1, -translateQtd);
-		break;
-
-	case 52://4
-		translateModel(1, +translateQtd);
-		break;
-
-	case 53://5
-		translateModel(2, -translateQtd);
-		break;
-
-	case 54://6
-		translateModel(2, +translateQtd);
-		break;
-
-	case 55://7 gira o objeto selecionado em relação ao eixo X
-		if (!lightSelected)
-			objs[modelIndex].rotate_x += 5;
-		break;
-	case 56://8 gira o objeto selecionado em relação ao eixo Y
-		if (!lightSelected)
-			objs[modelIndex].rotate_y += 5;
-		break;
-
-	case 57://9 gira o objeto selecionado em relação ao eixo Z
-		if (!lightSelected)
-			objs[modelIndex].rotate_z += 5;
-		break;
-
-	case 27: // ESC
-		exit(0);
-		break;
-
-	case 119: //w
-		cameraPrincipal.translateGlob(0, 0, 0.01);
-		break;
-
-	case 115: //s
-		cameraPrincipal.translateGlob(0, 0, -0.01);
-		break;
-
-	case 97: //a
-		cameraPrincipal.translateGlob(-0.01,0, 0);
-		break;
-
-	case 100: //d
-		cameraPrincipal.translateGlob(0.01, 0, 0);
-		break;
-
-	case 44://,
-		selectLast();
-		break;
-
-	case 46://.
-		selectNext();
-		break;
-
-	case 60://<
-		selectLast();
-		break;
-
-	case 62://>
-		selectNext();
-		break;
-	}
-		glutPostRedisplay();
+void handleKeypress(unsigned char key, int x, int y){
+	if (key=='c' || key == 'C') divided_view_port = !divided_view_port;
+	else keyboard[key] = true;
 }
 
 void translateModel(int selector, double deslocamento)
@@ -430,25 +428,51 @@ void selectNext()
 }
 
 void mouseClickFunction(int btn, int state, int x, int y){
+	
 	if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN){
-		if (!click){
-			click = true;
-			mousepos_x = x;
-			mousepos_y = y;
+		if (divided_view_port){
+			if (x < wWidth / 2){
+				if (!clickPrincipal){
+					clickPrincipal = true;
+					mousepos_x = x;
+					mousepos_y = y;
+				}
+			}
+			else{
+				if (!clickDiretor){
+					clickDiretor = true;
+					mousepos_x = x;
+					mousepos_y = y;
+				}
+			}
 		}
+		else{
+			if (!clickPrincipal){
+				clickPrincipal = true;
+				mousepos_x = x;
+				mousepos_y = y;
+			}
+		}
+		
 	}
 	else if (btn == GLUT_LEFT_BUTTON && state == GLUT_UP){
-		if (click){
-			click = false;
-		}
+
+		clickPrincipal = false;
+
+		clickDiretor = false;
+		
 	}
 }
 
 void mouseMotion(int x, int y){
 	if (!mouse_right){
-		if (click){
+		if (clickPrincipal){
 			cameraPrincipal.rotateGlob((x - mousepos_x)*0.2, 0, 1, 0);
 			cameraPrincipal.rotateGlob((y - mousepos_y)*0.2, 1, 0, 0);
+		}
+		if (clickDiretor){
+			cameraDiretor.rotateGlob((x - mousepos_x)*0.2, 0, 1, 0);
+			cameraDiretor.rotateGlob((y - mousepos_y)*0.2, 1, 0, 0);
 		}
 		mousepos_x = x;
 		mousepos_y = y;
@@ -462,7 +486,7 @@ int main(int argc, char* argv[]){
 
 	//  Request double buffered true color window with Z-buffer
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	glutInitWindowSize(800 , 800);
+	glutInitWindowSize(wWidth,wHeight);
 	// Create window
 	glutCreateWindow("Projeto PG");
 
@@ -470,10 +494,15 @@ int main(int argc, char* argv[]){
 	glEnable(GL_DEPTH_TEST);
 
 	// Callback functions
+	//glutDisplayFunc(display2);
+
+	
 	glutDisplayFunc(display);
+
+	
 	glutIdleFunc(idle);
 	glutKeyboardFunc(handleKeypress);
-
+	glutKeyboardUpFunc(handleKeyUp);
 	glutMotionFunc(mouseMotion);
 	glutMouseFunc(mouseClickFunction);
 
