@@ -16,7 +16,6 @@ void drawGrid();
 void selectNext();
 void selectLast();
 void translateModel(int selector, double deslocamento);
-bool leftScreen = true;
 bool divided_view_port = true;
 Camera cameraPrincipal = Camera();
 Camera cameraDiretor = Camera();
