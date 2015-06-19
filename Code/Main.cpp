@@ -16,7 +16,7 @@ void drawGrid();
 void selectNext();
 void selectLast();
 void translateModel(int selector, double deslocamento);
-bool divided_view_port = true;
+bool divided_view_port = false;
 Camera cameraPrincipal = Camera();
 Camera cameraDiretor = Camera();
 Model cameraObj = Model("Resources/camera.obj");
@@ -38,7 +38,7 @@ bool clickDiretor = false;
 bool mouse_right = false;
 GLfloat wWidth = 1024.0;
 GLfloat wHeight = 768.0;
-float zNear = 0.1f;
+float zNear = 2.0f;
 void idle(void);
 int frameCount = 0;
 float fps = 0;
@@ -51,14 +51,6 @@ GLvoid *font_style = GLUT_BITMAP_TIMES_ROMAN_24;
 
 // -------------Global Vars End ------------
 
-void draw(){
-	DisplayLights();
-	for (size_t i = 0; i < objs.size(); i++){
-		objs[i].DrawModel();
-	}
-	//drawGrid();
-	drawFPS();
-}
 void display(){
 
 	//  Clear screen and Z-buffer
@@ -66,15 +58,20 @@ void display(){
 
 	//--------------------------Camera Setup --------------------------------
 	// normal mode
-	
+
 	if (!divided_view_port){
-		
+
 		glViewport(0, 0, wWidth, wHeight);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		gluPerspective(45, wWidth / (wHeight), zNear, 3000.0f);
+		glFrustum(-1.5, 1.5, -1, 1, zNear, 500.0f);
+		//gluPerspective(45, wWidth / (wHeight), zNear, 3000.0f);
 		cameraPrincipal.setView();
-		draw();
+		DisplayLights();
+		for (size_t i = 0; i < objs.size(); i++){
+			objs[i].DrawModel();
+		}
+		drawFPS();
 	}
 	else{
 
@@ -82,21 +79,30 @@ void display(){
 		glMatrixMode(GL_PROJECTION);
 		glViewport(0, 0, wWidth / 2, wHeight);
 		glLoadIdentity();
-		gluPerspective(45, wWidth / (wHeight * 2), zNear, 3000.0f);
+		glFrustum(-1.5, 1.5, -1, 1, zNear, 500.0f);
+		//gluPerspective(45, wWidth / (wHeight*2), zNear, 3000.0f);
 		cameraPrincipal.setView();
-		draw();
+		DisplayLights();
+		for (size_t i = 0; i < objs.size(); i++){
+			objs[i].DrawModel();
+		}
+		drawFPS();
 
 		//right
 		glMatrixMode(GL_PROJECTION);
 		glViewport(wWidth / 2, 0, wWidth, wHeight);
 		glLoadIdentity();
-		gluPerspective(45, (wWidth) / (wHeight), 0.1f, 3000.0f);
+		glFrustum(-1.5, 1.5, -1, 1, zNear, 500.0f);
+		//gluPerspective(45, (wWidth) / (wHeight), zNear, 3000.0f);
 		cameraDiretor.setView();
-		draw();
-		
-		
+		DisplayLights();
+		for (size_t i = 0; i < objs.size(); i++){
+			objs[i].DrawModel();
+		}
+		cameraObj.DrawModel();
+		drawFPS();
 	}
-	
+
 	//-----------------------------------------------------------------------
 	glFlush();
 	glutSwapBuffers();
@@ -104,6 +110,7 @@ void display(){
 
 
 }
+
 void drawFPS()
 {
 	//  Load the identity matrix so that FPS string being drawn
@@ -116,16 +123,16 @@ void drawFPS()
 
 void DisplayLights()
 {
-	glPushMatrix();
+	/*glPushMatrix();
 	GLfloat position[] = { L1.pontos.x, L1.pontos.y, L1.pontos.z - 1, 1.0 };
 	glLightfv(GL_LIGHT0, GL_POSITION, position);
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
-	glPopMatrix();
-	
+	glPopMatrix();*/
+
 	glPushMatrix();
-	GLfloat position2[] = { L2.pontos.x+ 5, L2.pontos.y, L2.pontos.z - 1, 1.0 };
-	GLfloat color[] = { 0.89, 0, 0.87 };
+	GLfloat position2[] = { L2.pontos.x + 5, L2.pontos.y, L2.pontos.z - 1, 1.0 };
+	GLfloat color[] = { 0.05, 0.98, 0.56 };
 	glLightfv(GL_LIGHT1, GL_POSITION, position2);
 	glLightfv(GL_LIGHT1, GL_DIFFUSE, color);
 	glEnable(GL_LIGHTING);
@@ -149,10 +156,10 @@ void printw(float x, float y, float z, char* format, ...)
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 	glLoadIdentity();
-	va_list args;	//  Variable argument list
-	int len;		//	String length
-	int i;			//  Iterator
-	char * text;	//	Text
+	va_list args; //  Variable argument list
+	int len;    //  String length
+	int i;      //  Iterator
+	char * text;  //  Text
 
 	//  Initialize a variable argument list
 	va_start(args, format);
@@ -166,10 +173,11 @@ void printw(float x, float y, float z, char* format, ...)
 
 	//  Write formatted output using a pointer to the list of arguments
 	vsprintf_s(text, len, format, args);
-
 	//  End using variable argument list 
 	va_end(args);
 	//  Specify the raster position for pixel operations.,
+	glDisable(GL_LIGHTING);
+	glColor3f(1.0, 1.0, 1.0);
 	glRasterPos3f(x, y, z);
 	//  Draw the characters one by one
 	for (i = 0; text[i] != '\0'; i++)
@@ -180,7 +188,7 @@ void printw(float x, float y, float z, char* format, ...)
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
-}	
+}
 
 
 void calculateFPS()
@@ -207,6 +215,7 @@ void calculateFPS()
 		frameCount = 0;
 	}
 }
+
 
 
 void idle(void)
@@ -263,7 +272,7 @@ void idle(void)
 	if (keyboard['r'] || keyboard['R']){
 		cameraPrincipal.translateLoc(0, 0, -0.009f);
 		zNear += 0.009f;
-	}	
+	}
 	if (keyboard['f'] || keyboard['F']){
 		cameraPrincipal.translateLoc(0, 0, 0.009f);
 		zNear -= 0.009f;
@@ -292,20 +301,22 @@ void drawGrid() // Draws a grid...
 
 	glPopMatrix();
 }
+
 void handleKeyUp(unsigned char key, int x, int y){
 	if (key != 'c')
 		keyboard[key] = false;
 }
 
 void handleKeypress(unsigned char key, int x, int y){
-	if (key=='c' || key == 'C') divided_view_port = !divided_view_port;
+	if (key == 'c' || key == 'C') divided_view_port = !divided_view_port;
 	else keyboard[key] = true;
+
 }
 
 void translateModel(int selector, double deslocamento)
 {
 	//select: x = 0; y = 1 ; z=2;
-	const double translateLightBoost = 1;
+	const double translateLightBoost = 0.10;
 	if (selector == 0)
 	{
 		if (!lightSelected)
@@ -315,10 +326,10 @@ void translateModel(int selector, double deslocamento)
 		else{
 			if (lightIndex == 0)
 			{
-				L1.translate(deslocamento +translateLightBoost, 0, 0);
+				L1.translate(deslocamento + translateLightBoost, 0, 0);
 			}
 			else{
-				L2.translate(deslocamento +translateLightBoost, 0, 0);
+				L2.translate(deslocamento + translateLightBoost, 0, 0);
 			}
 		}
 
@@ -338,7 +349,7 @@ void translateModel(int selector, double deslocamento)
 			}
 		}
 	}
-	else if(selector == 2){
+	else if (selector == 2){
 		if (!lightSelected)
 		{
 			objs[modelIndex].translate_z += deslocamento;
@@ -393,7 +404,7 @@ void selectLast()
 
 void selectNext()
 {
-	if (modelIndex < objs.size()-1 && !lightSelected)
+	if (modelIndex < objs.size() - 1 && !lightSelected)
 	{
 		modelIndex = modelIndex + 1;
 		printf("Selected: %s %d \n", objs[modelIndex].nome.c_str(), modelIndex);
@@ -425,9 +436,8 @@ void selectNext()
 		}
 	}
 }
-
 void mouseClickFunction(int btn, int state, int x, int y){
-	
+
 	if (btn == GLUT_LEFT_BUTTON && state == GLUT_DOWN){
 		if (divided_view_port){
 			if (x < wWidth / 2){
@@ -452,14 +462,14 @@ void mouseClickFunction(int btn, int state, int x, int y){
 				mousepos_y = y;
 			}
 		}
-		
+
 	}
 	else if (btn == GLUT_LEFT_BUTTON && state == GLUT_UP){
 
 		clickPrincipal = false;
 
 		clickDiretor = false;
-		
+
 	}
 }
 
@@ -478,6 +488,18 @@ void mouseMotion(int x, int y){
 	}
 }
 
+void myreshape(GLsizei w, GLsizei h) // Called at startup and when you move the window
+{
+	glMatrixMode(GL_PROJECTION);
+	wWidth = w;
+	wHeight = h;
+	double g_Width = wWidth;
+	double g_Height = wHeight;
+	glViewport(0, 0, g_Width, g_Height);
+	glLoadIdentity();
+	gluPerspective(45, g_Width / g_Height, 0.1f, 500.0f);
+}
+
 int main(int argc, char* argv[]){
 
 	LoadModels();
@@ -485,7 +507,9 @@ int main(int argc, char* argv[]){
 
 	//  Request double buffered true color window with Z-buffer
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	glutInitWindowSize(wWidth,wHeight);
+	glutInitWindowSize(wWidth, wHeight);
+	cameraObj.scale *= 3;
+	cameraDiretor.translateLoc(0, 0, -0.1);
 	// Create window
 	glutCreateWindow("Projeto PG");
 
@@ -493,15 +517,14 @@ int main(int argc, char* argv[]){
 	glEnable(GL_DEPTH_TEST);
 
 	// Callback functions
-	//glutDisplayFunc(display2);
 
-	
+
 	glutDisplayFunc(display);
-
-	
+	glutReshapeFunc(myreshape);
 	glutIdleFunc(idle);
 	glutKeyboardFunc(handleKeypress);
 	glutKeyboardUpFunc(handleKeyUp);
+
 	glutMotionFunc(mouseMotion);
 	glutMouseFunc(mouseClickFunction);
 
